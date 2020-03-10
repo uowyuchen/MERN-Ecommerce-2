@@ -1,5 +1,5 @@
 import React, { Fragment } from "react";
-import { Link, withRouter, Redirect } from "react-router-dom";
+import { Link, withRouter } from "react-router-dom";
 import { signout, isAuthenticated } from "../auth/index";
 
 const isActive = (history, path) => {
