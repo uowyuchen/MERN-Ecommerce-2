@@ -1,4 +1,5 @@
 import { API } from "../config";
+const queryString = require("query-string");
 
 // create all products
 export const getAllProducts = sortBy => {
@@ -32,6 +33,20 @@ export const getFilteredProducts = (skip, limit, filters = {}) => {
       "Content-Type": "application/json"
     },
     body: JSON.stringify(data)
+  })
+    .then(response => {
+      return response.json();
+    })
+    .catch(err => console.log(err));
+};
+
+// list searched products
+export const list = params => {
+  // console.log(params);
+  const query = queryString.stringify(params);
+  // console.log("query", query);
+  return fetch(`${API}/products/search?${query}`, {
+    method: "GET"
   })
     .then(response => {
       return response.json();
