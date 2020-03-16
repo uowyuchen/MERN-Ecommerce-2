@@ -28,12 +28,16 @@ const Card = ({
     );
   };
 
-  const showAddToCartButton = showAddToCartButtonInCart =>
-    showAddToCartButtonInCart && (
-      <button onClick={addToCart} className='btn btn-outline-info mt-2 mb-2'>
-        Add to Cart
-      </button>
+  const showAddToCartButton = showAddToCartButtonInCart => {
+    return (
+      showAddToCartButtonInCart && (
+        <button onClick={addToCart} className='btn btn-outline-info mt-2 mb-2'>
+          Add to Cart
+        </button>
+      )
     );
+  };
+
   const addToCart = () => {
     //     sold: 0
     // _id: "5e6923ec543bb78139f71ca0"
@@ -118,7 +122,7 @@ const Card = ({
       <div className='card-header name'>{product.name}</div>
       <div className='card-body'>
         {/* redirect to cart after add to cart  */}
-        {shouldRedirect()}
+        {shouldRedirect(redirect)}
 
         <ShowImage item={product} url='products' />
         <p className='lead mt-2'>{product.description.substring(0, 10)}...</p>
