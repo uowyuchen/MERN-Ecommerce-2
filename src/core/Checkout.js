@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { getBraintreeClientToken, processPayment } from "./apiCore";
+import {
+  getBraintreeClientToken,
+  processPayment,
+  createOrder
+} from "./apiCore";
 import { isAuthenticated } from "../auth/index";
 import { Link } from "react-router-dom";
 import DropIn from "braintree-web-drop-in-react";
@@ -49,6 +53,9 @@ const Checkout = ({ products, setRun = f => f, run = undefined }) => {
     );
   };
 
+  // 我试过 只有这样才能有address显示出来 不能直接用data.address在buy函数中
+  let deliveryAddress = data.address;
+
   const buy = () => {
     setData({ loading: true });
     // send the nonce to your server
@@ -69,12 +76,22 @@ const Checkout = ({ products, setRun = f => f, run = undefined }) => {
           .then(response => {
             // 这个response返回了一系列成功付款之后的信息到前端
             // console.log(response);
-            setData({ ...data, success: response.success });
-            // 成功付款后 empty cart
-            emptyCart(() => {
-              setRun(!run);
-              console.log("payment success and empty cart");
-              setData({ loading: false });
+
+            // 在清空cart之前我们要create order
+            const createOrderData = {
+              products: products,
+              transaction_id: response.transaction.id, // transaction id是braintree给我们的
+              amount: response.transaction.amount,
+              address: deliveryAddress
+            };
+            // 创建一个order
+            createOrder(userId, token, createOrderData).then(response => {
+              // 成功付款后 empty cart
+              emptyCart(() => {
+                setRun(!run);
+                console.log("payment success and empty cart");
+                setData({ loading: false, success: true });
+              });
             });
           })
           .catch(err => {
@@ -88,11 +105,27 @@ const Checkout = ({ products, setRun = f => f, run = undefined }) => {
       });
   };
 
+  // handle user input delivery address
+  const handleAddress = event => {
+    setData({ ...data, address: event.target.value });
+  };
+
   const showDropIn = () => (
     <div onBlur={() => setData({ ...data, error: "" })}>
       {/* 有clientToken并且此cart中有product */}
       {data.clientToken !== null && products.length > 0 ? (
         <div>
+          {/* user input delivery address */}
+          <div className='gorm-group mb-3'>
+            <label className='text-muted'>Delivery Address: </label>
+            <textarea
+              onChange={handleAddress}
+              className='form-control'
+              value={data.address}
+              placeholder='Type your delivery address here ...'
+            />
+          </div>
+
           <DropIn
             options={{
               authorization: data.clientToken,
@@ -100,10 +133,7 @@ const Checkout = ({ products, setRun = f => f, run = undefined }) => {
                 flow: "vault"
               }
             }}
-            onInstance={instance => {
-              // console.log(instance);
-              return (data.instance = instance);
-            }}
+            onInstance={instance => (data.instance = instance)}
           />
           <button onClick={buy} className='btn btn-success btn-block'>
             Pay
