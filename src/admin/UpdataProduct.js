@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from "react";
 import Layout from "../core/Layout";
 import { isAuthenticated } from "../auth/index";
-import { createProduct, getAllCategories } from "./apiAdmin";
-import { Link } from "react-router-dom";
+import {
+  getProduct,
+  getAllCategories,
+  updateProduct,
+  createProduct
+} from "./apiAdmin";
+import { Link, Redirect } from "react-router-dom";
 
-const AddProduct = () => {
+const UpdateProduct = ({ match }) => {
   const { user, token } = isAuthenticated();
   // set state
   const [values, setValues] = useState({
     name: "",
     description: "",
     price: "",
-    categories: [],
     category: "",
     shipping: "",
     quantity: "",
@@ -22,15 +26,17 @@ const AddProduct = () => {
     redirectToProfile: false,
     formData: ""
   });
+  // create separate state for list of categories
+  const [categories, setCategories] = useState([]);
+  const [getShippingStatus, setGetShippingStatus] = useState("");
 
   const {
     name,
     description,
     price,
-    categories,
     category,
-    shipping,
     quantity,
+    shipping,
     loading,
     error,
     createdProduct,
@@ -39,19 +45,45 @@ const AddProduct = () => {
   } = values;
 
   // get all categories & set formData
-  const initAllCategories = () => {
+  const initCategories = () => {
     getAllCategories().then(data => {
       if (data.error) {
         setValues({ ...values, error: data.error });
       } else {
-        setValues({ ...values, categories: data, formData: new FormData() });
+        // this is the change
+        // previously it was setValues({categories: data})
+        setCategories(data);
       }
     });
   };
 
+  const init = productId => {
+    getProduct(productId).then(data => {
+      if (data.error) {
+        setValues({ ...values, error: data.error });
+      } else {
+        // populate the state
+        setValues({
+          ...values,
+          name: data.name,
+          description: data.description,
+          price: data.price,
+          category: data.category._id,
+          shipping: data.shipping,
+          quantity: data.quantity,
+          formData: new FormData()
+        });
+        setGetShippingStatus(data.shipping == "true" ? "1" : "0");
+
+        // load categories
+        initCategories();
+      }
+    });
+  };
   // componentDidMount
   useEffect(() => {
-    initAllCategories();
+    // get product id from url
+    init(match.params.productId);
   }, []);
 
   // handle form change
@@ -71,23 +103,26 @@ const AddProduct = () => {
     event.preventDefault();
     setValues({ ...values, error: "", loading: true });
     // call api
-    createProduct(user.id, token, formData).then(data => {
-      if (data.error) {
-        setValues({ ...values, error: data.error });
-      } else {
-        setValues({
-          ...values,
-          name: "",
-          description: "",
-          price: "",
-          quantity: "",
-          photo: "",
-          loading: false,
-          error: "",
-          createdProduct: data.name
-        });
+    updateProduct(match.params.productId, user.id, token, formData).then(
+      data => {
+        if (data.error) {
+          setValues({ ...values, error: data.error });
+        } else {
+          setValues({
+            ...values,
+            name: "",
+            description: "",
+            price: "",
+            quantity: "",
+            photo: "",
+            loading: false,
+            error: "",
+            createdProduct: data.name,
+            redirectToProfile: true
+          });
+        }
       }
-    });
+    );
   };
 
   // show error
@@ -105,9 +140,17 @@ const AddProduct = () => {
       className='alert alert-info'
       style={{ display: createdProduct ? "" : "none" }}
     >
-      <h2>{`${createdProduct} is created!`}</h2>
+      <h2>{`${createdProduct} is updated!`}</h2>
     </div>
   );
+
+  const redirectUser = () => {
+    if (redirectToProfile) {
+      if (!error) {
+        return <Redirect to='/' />;
+      }
+    }
+  };
 
   // show loading
   const showLoading = () =>
@@ -180,6 +223,7 @@ const AddProduct = () => {
           className='form-control'
           name='category'
           onChange={handleChange}
+          value={category}
         >
           <option>Please Select...</option>
           {categories &&
@@ -199,6 +243,7 @@ const AddProduct = () => {
           className='form-control'
           name='shipping'
           onChange={handleChange}
+          value={getShippingStatus}
         >
           <option>Please Select...</option>
           <option value='0'>No</option>
@@ -218,7 +263,7 @@ const AddProduct = () => {
           onChange={handleChange}
         />
       </div>
-      <button className='btn btn-outline-primary'>Create a product</button>
+      <button className='btn btn-outline-primary'>Update a product</button>
     </form>
   );
   return (
@@ -232,10 +277,11 @@ const AddProduct = () => {
           {showSuccess()}
           {showError()}
           {newProductForm()}
+          {redirectUser()}
         </div>
       </div>
     </Layout>
   );
 };
 
-export default AddProduct;
+export default UpdateProduct;
